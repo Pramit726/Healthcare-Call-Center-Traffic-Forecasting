@@ -9,6 +9,7 @@ from .. import schemas
 # Initialize predictor
 predictor = Predictor()
 
+
 # Cache to store forecast results
 forecast_cache = {}
 
