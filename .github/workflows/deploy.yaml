@@ -1,0 +1,102 @@
+name: Deploy API and Frontend to Render
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'api/**'
+      - 'ml/**'
+      - 'data/processed/**'
+      - 'artifacts/**'
+      - 'requirements.txt'
+      - 'setup.py'
+      - 'pyproject.toml'
+      - 'api.Dockerfile'
+      - 'frontend/**'
+      - 'frontend.Dockerfile'
+
+jobs:
+  deploy-api:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Ensure all files and history are available
+
+      - name: Check for API Changes
+        id: api_changes
+        run: |
+          if [ $(git rev-list --count HEAD) -gt 1 ]; then
+            if git diff --name-only HEAD^ HEAD | grep -E '^api/|^api\.Dockerfile'; then
+              echo "api_changed=true" >> $GITHUB_ENV
+            else
+              echo "api_changed=false" >> $GITHUB_ENV
+            fi
+          else
+            echo "api_changed=true" >> $GITHUB_ENV  # Assume changes on first commit
+          fi
+
+      - name: Log in to DockerHub
+        if: env.api_changed == 'true'
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and Push API Docker Image
+        if: env.api_changed == 'true'
+        run: |
+          docker build -t ${{ secrets.DOCKER_USERNAME }}/smartphone-spec-score-analysis-api-service:latest -f api.Dockerfile .
+          docker push ${{ secrets.DOCKER_USERNAME }}/smartphone-spec-score-analysis-api-service:latest
+
+      - name: Trigger API Deployment
+        if: env.api_changed == 'true'
+        run: |
+          curl -X POST "https://api.render.com/v1/services/${{ secrets.RENDER_API_SERVICE_ID_API }}/deploys" \
+            -H "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}" \
+            -H "Accept: application/json" \
+            -d ''
+
+  deploy-frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Ensure all files and history are available
+
+      - name: Check for Frontend Changes
+        id: frontend_changes
+        run: |
+          if [ $(git rev-list --count HEAD) -gt 1 ]; then
+            if git diff --name-only HEAD^ HEAD | grep -E '^frontend/|^frontend\.Dockerfile'; then
+              echo "frontend_changed=true" >> $GITHUB_ENV
+            else
+              echo "frontend_changed=false" >> $GITHUB_ENV
+            fi
+          else
+            echo "frontend_changed=true" >> $GITHUB_ENV  # Assume changes on first commit
+          fi
+
+      - name: Log in to DockerHub
+        if: env.frontend_changed == 'true'
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and Push Frontend Docker Image
+        if: env.frontend_changed == 'true'
+        run: |
+          docker build -t ${{ secrets.DOCKER_USERNAME }}/smartphone-spec-score-analysis-frontend-service:latest -f frontend.Dockerfile .
+          docker push ${{ secrets.DOCKER_USERNAME }}/smartphone-spec-score-analysis-frontend-service:latest
+
+      - name: Trigger Frontend Deployment
+        if: env.frontend_changed == 'true'
+        run: |
+          curl -X POST "https://api.render.com/v1/services/${{ secrets.RENDER_API_SERVICE_ID_FRONTEND }}/deploys" \
+            -H "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}" \
+            -H "Accept: application/json" \
+            -d ''
