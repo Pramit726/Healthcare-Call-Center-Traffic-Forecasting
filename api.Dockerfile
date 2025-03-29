@@ -11,7 +11,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends tini && rm -rf 
 # Copy only API-related files
 COPY api ./api
 COPY ml ./ml
-COPY data/processed ./data/processed
+COPY data/raw ./data/raw
 COPY artifacts ./artifacts
 COPY setup.py pyproject.toml requirements.txt ./
 
