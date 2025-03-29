@@ -48,8 +48,8 @@ jobs:
       - name: Build and Push API Docker Image
         if: env.api_changed == 'true'
         run: |
-          docker build -t ${{ secrets.DOCKER_USERNAME }}/smartphone-spec-score-analysis-api-service:latest -f api.Dockerfile .
-          docker push ${{ secrets.DOCKER_USERNAME }}/smartphone-spec-score-analysis-api-service:latest
+          docker build -t ${{ secrets.DOCKER_USERNAME }}/call-forecasting-api-service:latest -f api.Dockerfile .
+          docker push ${{ secrets.DOCKER_USERNAME }}/call-forecasting-api-service:latest
 
       - name: Trigger API Deployment
         if: env.api_changed == 'true'
@@ -90,8 +90,8 @@ jobs:
       - name: Build and Push Frontend Docker Image
         if: env.frontend_changed == 'true'
         run: |
-          docker build -t ${{ secrets.DOCKER_USERNAME }}/smartphone-spec-score-analysis-frontend-service:latest -f frontend.Dockerfile .
-          docker push ${{ secrets.DOCKER_USERNAME }}/smartphone-spec-score-analysis-frontend-service:latest
+          docker build -t ${{ secrets.DOCKER_USERNAME }}/call-forecasting-frontend-service:latest -f frontend.Dockerfile .
+          docker push ${{ secrets.DOCKER_USERNAME }}/call-forecasting-frontend-service:latest
 
       - name: Trigger Frontend Deployment
         if: env.frontend_changed == 'true'
