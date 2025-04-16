@@ -30,6 +30,15 @@ By accurately forecasting call volumes, stakeholders can:
 - **Live Demo** → [Application Link](https://call-forecasting-frontend-service-v1.onrender.com/)  
 - **Postman Collection** → [API Testing Collection](https://crimson-equinox-345795.postman.co/workspace/My-Workspace~393a6c73-8b4d-435b-8c76-ad0f04e4d33b/collection/26974525-493702fa-315d-45f5-88d8-25942f053f0a?action=share&creator=26974525)
 
+
+## Screenshots
+
+![plot](./docs/assets/dashboard/Slide1.PNG)
+![plot](./docs/assets/dashboard/Slide2.PNG)
+![plot](./docs/assets/dashboard/Slide3.PNG)
+![plot](./docs/assets/dashboard/Slide4.PNG)
+
+
 ## EDA  
 
 ### **Trend Analysis**
