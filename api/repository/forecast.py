@@ -1,15 +1,26 @@
-from datetime import timedelta
+import json
+import os
+from datetime import datetime, timedelta
 
+import pandas as pd
+from dotenv import load_dotenv
+from evidently.test_suite import TestSuite
+from evidently.tests import TestColumnDrift
 from fastapi import HTTPException, status
+from pymongo import MongoClient, UpdateOne
 
 from ml.pipeline.prediction_pipeline import Predictor
 
 from .. import schemas
+from .utils import get_recent_logs_from_db
 
+load_dotenv()  # Load environment variables from .env file
 # Initialize predictor
 predictor = Predictor()
 
-
+client = MongoClient(os.getenv("MONGO_URI", "mongodb://localhost:27017/"))
+db = client["staffing_forecast_db"]
+logs_collection = db["forecast_logs"]
 # Cache to store forecast results
 forecast_cache = {}
 
@@ -42,6 +53,21 @@ async def predict_calls(request: schemas.ForecastRequest):
             )
             for i in range(request.n_months)
         ]
+
+        # SAVE TO MONGODB
+        log_entries = []
+        for item in result:
+            log_entries.append(
+                {
+                    "timestamp": datetime.utcnow(),  # When the prediction was made
+                    "target_month": item.month,  # e.g., "Apr 2026"
+                    "prediction": item.forecasted_calls,  # The forecast
+                    "actual_calls": None,  # Placeholder! Updated later.
+                }
+            )
+
+        if log_entries:
+            logs_collection.insert_many(log_entries)
 
         # Store forecast results in cache
         forecast_cache["forecast"] = {
@@ -118,3 +144,107 @@ async def get_model_metrics():
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error during metrics retrieval: {e}",
         )
+
+
+def update_actual_calls(request: schemas.UpdateActualCallsRequest):
+    """
+    Updates an existing forecast record with the actual number of calls.
+    """
+    client = MongoClient(os.getenv("MONGO_URI"))
+    db = client["staffing_forecast_db"]
+
+    # We use 'target_month' to match MongoDB document structure
+    result = db.forecast_logs.update_one(
+        {"target_month": request.target_month},
+        {"$set": {"actual_calls": request.actual_count}},
+    )
+
+    if result.matched_count == 0:
+        return {
+            "status": "error",
+            "message": f"No forecast found for {request.target_month}",
+        }
+
+    return {
+        "status": "success",
+        "message": f"Updated {request.target_month} with actual count {request.actual_count}",
+    }
+
+
+def batch_update_actual_calls(request: schemas.BatchUpdateActualCallsRequest):
+    """
+    Updates multiple months of ground truth data in a single MongoDB operation.
+    """
+    client = MongoClient(os.getenv("MONGO_URI"))
+    db = client["staffing_forecast_db"]
+    collection = db["forecast_logs"]
+
+    # 1. Prepare the bulk operations
+    operations = [
+        UpdateOne(
+            {"target_month": item.target_month},
+            {"$set": {"actual_calls": item.actual_count}},
+        )
+        for item in request.updates
+    ]
+
+    if not operations:
+        return {"status": "error", "message": "No data provided"}
+
+    # 2. Execute all updates at once
+    result = collection.bulk_write(operations)
+
+    return {
+        "status": "success",
+        "matched_count": result.matched_count,
+        "modified_count": result.modified_count,
+        "message": f"Successfully processed {len(request.updates)} records.",
+    }
+
+
+async def check_for_drift():
+    # Load original training data (Reference)
+    # Load recent database logs (Current)
+    # ref_df = predictor.get_train_dataframe()
+    # print("Reference DataFrame head:", ref_df.head())
+    # if isinstance(ref_df, pd.Series):
+    #     ref_df = ref_df.to_frame(name="Calls")
+    # elif "Healthcare" in ref_df.columns:
+    #     ref_df = ref_df.rename(columns={"Healthcare": "Calls"})
+
+    curr_df = get_recent_logs_from_db()
+
+    # print("Current DataFrame head:", curr_df.head())
+    ref_df = curr_df[
+        ["Calls"]
+    ].copy()  # Use actual calls as reference for drift detection
+    curr_df.drop(columns=["Calls"], inplace=True)
+    curr_df.rename(columns={"Predicted_Calls": "Calls"}, inplace=True)
+    column_drift_test = TestSuite(tests=[TestColumnDrift(column_name="Calls")])
+
+    # print(curr_df.head())
+    # print("==========")
+    # print(ref_df.head())
+    column_drift_test.run(reference_data=ref_df, current_data=curr_df)
+    results_dict = column_drift_test.as_dict()
+    # print(results_dict)
+
+    test_info = results_dict["tests"][0]
+    params = test_info["parameters"]
+    # json_results = json.dumps(test_info, indent=4)
+    # print("Evidently Test Results:")
+
+    # Save to file
+    # with open("drift_test_results.json", "w") as f:
+    #     f.write(json_results)
+
+    # Check if the 'Target Drift' test failed
+    drift_score = params["score"]
+    # print(f"Drift Score: {drift_score}")
+    drift_detected = params["detected"]
+
+    return {
+        "drift_detected": drift_detected,
+        "score": drift_score,
+        "status": test_info["status"],
+    }

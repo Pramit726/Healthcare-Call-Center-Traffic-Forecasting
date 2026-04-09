@@ -19,7 +19,8 @@ By accurately forecasting call volumes, stakeholders can:
 - Evaluated forecasting models, selecting **ARIMA (1,1,4)** for optimal accuracy.  
 - Deployed an **interactive dashboard** using **Streamlit** for real-time forecast visualization.  
 - Integrated the solution with **FastAPI (backend), Docker (containerization), and Render.com (deployment)** to ensure scalability and accessibility.  
-
+- **Observability:** Integrated **Evidently AI and MLflow** into a production-oriented forecasting system to monitor prediction drift and data integrity, ensuring a 63.64% directional accuracy in high-stakes staffing predictions.
+- **Automated Retraining:** Implemented a drift-detection trigger that initiates an - **Optuna-based retraining loop** when data patterns shift significantly.
 
 
 ## Resources & Documentation  
@@ -114,18 +115,35 @@ While AR(1) and ARMA(1,1) were considered, they exhibited higher MAE values and 
 ### CI/CD Pipeline  
 - **GitHub Actions** automates deployments.  
 
-### Monitoring & Logging  
-- **Custom Logging Module** implemented.  
-- Observability setup planned for future iterations.  
+## MLOps: Production Monitoring & Observability
+
+To ensure the model remains reliable in a dynamic healthcare environment, the system includes a robust MLOps layer:
+
+### **Experiment Tracking (MLflow)**
+- All training runs, hyperparameters (ARIMA orders), and performance metrics (MAE, DA) are logged using **MLflow**.
+- Enables model versioning and easy rollback to previous "Gold Standard" versions if performance degrades.
+
+### **Drift Detection (Evidently AI)**
+- **Target Drift:** Monitors the distribution of actual call volumes versus historical data using the **Kolmogorov-Smirnov (K-S) test**.
+- **Prediction Drift:** Compares live model predictions against training distributions to detect "hallucinations" or unexpected output shifts.
+- **Automated Alerts:** The system identifies drift when the p-value falls below a **0.05 threshold**, indicating a statistically significant change in call patterns.
+
+### **Automated Retraining Pipeline**
+- A specialized `/monitor-and-retrain` endpoint triggers a background task that:
+    1. Fetches new ground-truth data from **MongoDB**.
+    2. Runs an **Evidently AI** test suite.
+    3. If drift is detected, executes an **Optuna hyperparameter optimization** to retrain the ARIMA model on the combined historical and new data.
 
 ### Deployment Infrastructure  
 
-| Component      | Technology Used          |
-|---------------|--------------------------|
-| Model Server  | FastAPI + Uvicorn        |
-| Frontend      | Streamlit                |
-| Deployment    | Render.com (Free Instance) |
-| CI/CD         | GitHub Actions           |
-| Containerization | Docker                 |
-
+| Component            | Technology Used                  |
+|----------------------|-----------------------------------|
+| Model Server         | FastAPI + Uvicorn                 |
+| Frontend             | Streamlit                         |
+| Database             | MongoDB (Inference Logs)          |
+| Monitoring           | Evidently AI |
+| Tracking             | MLflow (DagsHub) |
+| Deployment           | Render.com / Kubernetes (HPA)     |
+| CI/CD                | GitHub Actions                    |
+| Containerization     | Docker                            |
 
