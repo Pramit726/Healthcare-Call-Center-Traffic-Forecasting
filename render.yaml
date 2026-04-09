@@ -1,0 +1,26 @@
+# Exported from Render on 2025-03-10T14:53:52Z
+services:
+- type: web
+  name: call-forecasting-api-service-v1
+  runtime: docker
+  repo: https://github.com/Pramit726/Healthcare-Call-Center-Traffic-Forecasting
+  plan: free
+  region: oregon
+  dockerContext: .
+  dockerfilePath: api.Dockerfile
+  autoDeploy: false
+- type: web
+  name: call-forecasting-frontend-service-v1
+  runtime: docker
+  repo: https://github.com/Pramit726/Healthcare-Call-Center-Traffic-Forecasting
+  plan: free
+  envVars:
+  - key: API_BASE_URL
+    sync: false
+  region: oregon
+  dockerContext: .
+  dockerfilePath: frontend.Dockerfile
+  autoDeploy: false
+version: "1"
+
+

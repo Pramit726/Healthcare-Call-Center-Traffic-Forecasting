@@ -1,0 +1,15 @@
+[project]
+name = "frontend"
+version = "0.0.1"
+description = "Frontend components for application."
+authors = [{name = "Pramit De", email = "pramitde726@gmail.com"}]
+
+[tool.setuptools]
+packages = {find = {include = ["frontend"]}} 
+
+[tool.setuptools.dynamic]
+dependencies = {file = "requirements.txt"}
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"

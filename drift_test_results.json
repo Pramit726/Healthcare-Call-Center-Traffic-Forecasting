@@ -1,0 +1,13 @@
+{
+    "name": "Drift per Column",
+    "description": "The drift score for the feature **Calls** is 1. The drift detection method is K-S p_value. The drift detection threshold is 0.05.",
+    "status": "SUCCESS",
+    "group": "data_drift",
+    "parameters": {
+        "stattest": "K-S p_value",
+        "score": 1.0,
+        "threshold": 0.05,
+        "detected": false,
+        "column_name": "Calls"
+    }
+}
